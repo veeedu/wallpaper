@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winter Snowfall</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0a1929 0%, #1a2847 25%, #2a3f5f 50%, #1a3a52 75%, #0d1e2d 100%);
+            font-family: 'Playfair Display', serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Ambient light glow */
+        .ambient-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(135, 206, 250, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            top: 10%;
+            left: 15%;
+            filter: blur(60px);
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .ambient-glow:nth-child(2) {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(176, 196, 222, 0.08) 0%, transparent 70%);
+            top: 50%;
+            right: 10%;
+            animation: float 10s ease-in-out infinite reverse;
+        }
+
+        /* Snowflake container */
+        .snowflake-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Individual snowflakes */
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.3));
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            animation-duration: 10s;
+            animation-timing-function: linear;
+            opacity: 0.8;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.6));
+        }
+
+        /* Floating animation */
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes sway {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(30px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* Variation in snowflake sizes */
+        .snowflake.small {
+            width: 5px;
+            height: 5px;
+            animation-duration: 15s;
+            opacity: 0.6;
+        }
+
+        .snowflake.medium {
+            width: 10px;
+            height: 10px;
+            animation-duration: 12s;
+        }
+
+        .snowflake.large {
+            width: 15px;
+            height: 15px;
+            animation-duration: 10s;
+            opacity: 0.9;
+        }
+
+        /* Text overlay - optional ambient text */
+        .ambient-text {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: rgba(255, 255, 255, 0.15);
+            font-size: 3rem;
+            font-weight: 400;
+            letter-spacing: 8px;
+            pointer-events: none;
+            z-index: 2;
+            user-select: none;
+            text-shadow: 0 0 30px rgba(135, 206, 250, 0.2);
+        }
+
+        /* Ground frost effect */
+        .frost-layer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(to top, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Controls */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        button {
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.8);
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Playfair Display', serif;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 1);
+        }
+
+        button.active {
+            background: rgba(135, 206, 250, 0.3);
+            border-color: rgba(135, 206, 250, 0.7);
+            color: rgba(255, 255, 255, 1);
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow"></div>
+    <div class="ambient-glow"></div>
+    
+    <div class="snowflake-container" id="snowflakeContainer"></div>
+    
+    <div class="ambient-text">Snowfall</div>
+    
+    <div class="frost-layer"></div>
+
+    <div class="controls">
+        <button id="pauseBtn" class="active">Pause</button>
+        <button id="speedBtn">Speed: Normal</button>
+        <button id="densityBtn">Density: High</button>
+    </div>
+
+    <script>
+        class SnowfallSystem {
+            constructor() {
+                this.container = document.getElementById('snowflakeContainer');
+                this.snowflakes = [];
+                this.isPaused = false;
+                this.speed = 1;
+                this.density = 1;
+                this.speedStates = { 0.5: 'Slow', 1: 'Normal', 1.5: 'Fast' };
+                this.densityStates = { 0.5: 'Low', 1: 'High', 1.5: 'Ultra' };
+                this.speedIndex = 1;
+                this.densityIndex = 1;
+                
+                this.setupControls();
+                this.initSnowflakes();
+                this.startAnimation();
+            }
+
+            setupControls() {
+                document.getElementById('pauseBtn').addEventListener('click', () => this.togglePause());
+                document.getElementById('speedBtn').addEventListener('click', () => this.cycleSpeed());
+                document.getElementById('densityBtn').addEventListener('click', () => this.cycleDensity());
+            }
+
+            togglePause() {
+                this.isPaused = !this.isPaused;
+                const btn = document.getElementById('pauseBtn');
+                btn.textContent = this.isPaused ? 'Resume' : 'Pause';
+                btn.classList.toggle('active');
+                
+                this.snowflakes.forEach(flake => {
+                    if (this.isPaused) {
+                        flake.element.style.animationPlayState = 'paused';
+                    } else {
+                        flake.element.style.animationPlayState = 'running';
+                    }
+                });
+            }
+
+            cycleSpeed() {
+                const speedValues = [0.5, 1, 1.5];
+                this.speedIndex = (this.speedIndex + 1) % speedValues.length;
+                this.speed = speedValues[this.speedIndex];
+                document.getElementById('speedBtn').textContent = `Speed: ${this.speedStates[this.speed]}`;
+                this.updateSnowflakeSpeeds();
+            }
+
+            cycleDensity() {
+                const densityValues = [0.5, 1, 1.5];
+                this.densityIndex = (this.densityIndex + 1) % densityValues.length;
+                this.density = densityValues[this.densityIndex];
+                document.getElementById('densityBtn').textContent = `Density: ${this.densityStates[this.density]}`;
+                this.updateSnowflakeDensity();
+            }
+
+            createSnowflake() {
+                const flake = document.createElement('div');
+                flake.className = 'snowflake';
+                
+                const sizes = ['small', 'medium', 'large'];
+                const sizeWeights = [0.6, 0.3, 0.1]; // Bias towards smaller flakes
+                const random = Math.random();
+                let sizeClass = sizes[0];
+                let cumulative = 0;
+                
+                for (let i = 0; i < sizeWeights.length; i++) {
+                    cumulative += sizeWeights[i];
+                    if (random < cumulative) {
+                        sizeClass = sizes[i];
+                        break;
+                    }
+                }
+                
+                flake.classList.add(sizeClass);
+                
+                const leftPosition = Math.random() * 100;
+                const duration = (10 + Math.random() * 8) / this.speed;
+                const delay = Math.random() * 2;
+                const swayAmount = Math.random() * 100 - 50;
+                
+                flake.style.left = leftPosition + '%';
+                flake.style.animationDuration = duration + 's';
+                flake.style.setProperty('--sway', swayAmount + 'px');
+                flake.style.animationDelay = delay + 's';
+                flake.style.setProperty('--fall', `
+                    0% {
+                        transform: translateY(0) translateX(0);
+                        opacity: 0;
+                    }
+                    5% {
+                        opacity: 0.8;
+                    }
+                    95% {
+                        opacity: 0.8;
+                    }
+                    100% {
+                        transform: translateY(100vh) translateX(${swayAmount}px);
+                        opacity: 0;
+                    }
+                `);
+                
+                flake.style.animation = `fall ${duration}s linear ${delay}s forwards`;
+                
+                this.container.appendChild(flake);
+                
+                return {
+                    element: flake,
+                    duration: duration,
+                    delay: delay
+                };
+            }
+
+            initSnowflakes() {
+                this.clearSnowflakes();
+                const count = Math.floor(80 * this.density);
+                
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        if (!this.isPaused) {
+                            this.snowflakes.push(this.createSnowflake());
+                        }
+                    }, i * 50);
+                }
+            }
+
+            clearSnowflakes() {
+                this.snowflakes.forEach(flake => flake.element.remove());
+                this.snowflakes = [];
+            }
+
+            updateSnowflakeSpeeds() {
+                this.clearSnowflakes();
+                this.initSnowflakes();
+            }
+
+            updateSnowflakeDensity() {
+                this.clearSnowflakes();
+                this.initSnowflakes();
+            }
+
+            startAnimation() {
+                setInterval(() => {
+                    if (!this.isPaused) {
+                        // Remove snowflakes that have finished falling
+                        this.snowflakes = this.snowflakes.filter(flake => {
+                            if (flake.element.parentNode === null) {
+                                return false;
+                            }
+                            
+                            const rect = flake.element.getBoundingClientRect();
+                            if (rect.top > window.innerHeight + 50) {
+                                flake.element.remove();
+                                return false;
+                            }
+                            return true;
+                        });
+
+                        // Create new snowflakes to maintain density
+                        const targetCount = Math.floor(80 * this.density);
+                        while (this.snowflakes.length < targetCount) {
+                            this.snowflakes.push(this.createSnowflake());
+                        }
+                    }
+                }, 500);
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            new SnowfallSystem();
+        });
+    </script>
+</body>
+</html>
